@@ -557,3 +557,5 @@ class NewOrder extends Component {
 }
 
 export default withRouter(connect(null, {getItems, newOrder})(NewOrder));
+
+
