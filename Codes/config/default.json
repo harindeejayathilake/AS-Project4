@@ -1,6 +1,0 @@
-{
-    "mongoURI": "mongodb+srv://eCart:f!vef!ngers@cluster0-dcjnz.gcp.mongodb.net/eCart?retryWrites=true&w=majority",
-    "mongoTest": "mongodb://localhost:27017/test" ,
-    "jwtSecret": "fivefingers",
-    "compass": "mongodb+srv://eCart:f!vef!ngers@cluster0-dcjnz.gcp.mongodb.net/test"
-}
