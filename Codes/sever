@@ -116,4 +116,4 @@ class AddItem extends Component {
     }
 }
 
-export default withRouter(connect(null, {addItem})(AddItem));
+export default withRouter(connect(null, {getSellers, getSellerItems, deleteSeller})(SellersInfo));
