@@ -1,0 +1,56 @@
+.custom-body {
+  background-color: #f6f6f6;
+}
+
+div.card {
+  box-shadow: 0 4px 4px 0 rgba(0, 0, 0, 0.2);
+}
+
+a.nav-button.nav-link {
+  color: white;
+  cursor: pointer;
+}
+
+a.nav-button.nav-link:hover {
+  border-bottom: 1px white solid;
+}
+
+nav.navbar.navbar-expand-md.bg-info {
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+  color: white;
+  z-index: 10;
+  width: 100%;
+}
+
+button.drop-categories.dropdown-toggle.btn.btn-secondary {
+  color: black;
+  width: 200px;
+}
+
+button.drop-categories.dropdown-toggle.btn.btn-secondary:hover {
+  color: white;
+  background: #3498db;
+}
+
+button.theme.btn.btn-secondary {
+  background: #3498db;
+  border-top-right-radius: 0.25rem;
+  border-bottom-right-radius: 0.25rem;
+}
+
+div.checkout.modal-body {
+  background: #f7fbff;
+  padding: 40px;
+  border-radius: 0.2rem;
+}
+div.payment.modal-body {
+  background: white;
+  padding: 40px;
+  border-radius: 0.2rem;
+}
+
+div.login.modal-body {
+  background: white;
+  padding: 40px;
+  border-radius: 0.2rem;
+}
