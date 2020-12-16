@@ -20,16 +20,8 @@ const BillSchema = new Schema({
 
 module.exports = Bill = mongoose.model('Bill', BillSchema);
 
-
-
-
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-
-
-
-
-
 
 
 const mongoose = require('mongoose');
