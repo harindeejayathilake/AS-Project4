@@ -283,3 +283,23 @@ export const tokenConfig = () =>{
 }
 
 
+/ ** User ** //
+export const loadUser = () => (dispatch, getState) => {
+    dispatch({type: USER_LOADING});
+    axios.get('/auth/user', tokenConfig(getState))
+    .then(res=> dispatch({type: USER_LOADED, payload: res.data}))
+    .catch(err =>{dispatch(returnErrors(err.response.data, err.response.status)); dispatch({type: AUTH_ERROR})})
+};
+
+export const register = (user) => dispatch =>{
+    dispatch({type: USER_LOADING});
+    return axios.post('/auth/register', user, {headers:{ 'Content-type':'application/json' }} )
+    .then(res =>  {dispatch({type: REGISTER_SUCCESS, payload: res.data})})
+    .catch(err => {dispatch(returnErrors(err.response.data, err.response.status, 'REGISTER_FAIL')); dispatch({type: REGISTER_FAIL})})
+}
+
+export const logout = () =>{
+    return {
+        type: LOGOUT_SUCCESS
+    }
+}
