@@ -1221,4 +1221,1095 @@ class AddItem extends Component {
 export default withRouter(connect(null, {getSellers, getSellerItems, deleteSeller})(SellersInfo));
 
 
+import React, { Component } from 'react';
+import {connect} from 'react-redux';
+import { withRouter } from 'react-router-dom';
+import { getOrderInfo, updateOrder, updateOrderByItem } from '../actions/authActions';
 
+import Navbar from '../Components/HomeNavbar';
+import Footer from '../Components/Footer';
+
+import { Button, CardBody, Progress, Spinner, Card, CardText } from 'reactstrap';
+
+const qs = require('query-string');
+
+class OrderInfo extends Component {
+
+    _isMounted = false;
+    state={
+        max: 0,
+        value: 0,
+        status: '',
+        order: null,
+        ready_items: [],
+        loading: true
+    }
+
+    componentDidMount=()=>{
+        this._isMounted = true;
+        const parsed = qs.parse(window.location.search);
+        this.props.getOrderInfo(parsed.id).then(res=>{
+            let max = res.items.length + 2;
+            let value = 0;
+            let ready_items = [];
+            let status = '';
+            let items = res.items;
+
+            
+            if(res.accepted=== true && res.delivered === true){
+                status = 'Order has been sent!'
+                value = max;
+                
+            }else if(res.accepted=== true && res.delivered === false){
+                
+                value =1;
+                
+                for(let i =0 ; i<items.length; i++){
+                    if(items[i].ready){
+                        ready_items.push(1);
+                        value += 1;
+                    }else{
+                        ready_items.push(0);
+                    }
+                }
+
+                if(value === max-1){
+                    status = 'Order is ready to move..'
+                }else{
+                    status = 'Order is processing..'
+                }
+
+            }else{
+                status = 'Pending..'
+                value = 0;
+            }
+
+            if(this._isMounted){
+                this.setState({order: res, max, value, status, ready_items, loading: false})
+            }
+
+        })
+    }
+    componentWillUnmount() {this._isMounted = false}
+
+    updateOrder=(update)=>{
+        this.props.updateOrder( this.state.order._id, update).then(res=>{
+            this.setState({value: (this.state.value+1)})
+        });
+    }
+
+    acceptOrder=()=>{
+        this.updateOrder({update:{accepted: true}});
+    }
+
+    sendOrder=()=>{
+        this.updateOrder({update:{delivered: true}});
+    }
+
+    updateOrderByItem = (id)=>{
+        this.props.updateOrderByItem({order_id: this.state.order._id, item_id:id}).then(res=>{
+            window.location.reload();
+        })
+    }
+
+
+
+    render() {
+        const {order} = this.state;
+
+        return (
+            
+            <main className="page shopping-cart-page">
+                <Navbar/>
+                <div className="container"  style={{background: 'white', boxShadow: '0 0 15px rgba(0,0,0,.1)', marginTop: '80px', padding:'0px'}}>
+                    <div className="row no-gutters">
+                        <div className="col-md-12 col-lg-8" style={{padding:'36px'}} >
+                            {this.state.loading?
+                                <section style={{display: 'flex', justifyContent: 'center'}} ><Spinner/></section>
+                            :
+                                <section>
+                                    <div>
+                                        <h5>Order Id: {order._id}</h5>
+                                        <h6>Date: {order.date}</h6>
+                                        <h6>Total Amount: Rs. {order.total}</h6>
+                                        <h6>Status: {this.state.status} </h6>
+                                        <Progress animated min={0} max={this.state.max} value={this.state.value} color='success' />
+                                    </div>
+                                    <hr/>
+                                    
+                                    <div className="items">
+                                        <h6>Items: </h6>
+                                        
+                                        {order.items.length>0?
+                                            order.items.map((item, index)=>(
+
+                                                <div className="product" key={index} style={{paddingBottom: '25px'}} >
+                                                    <div className="row justify-content-center align-items-center">
+
+                                                        <div className="col-md-3" >
+                                                            <div className="product-image" style={{padding: '15px', border: '1px  #f0f0f0 solid'}} ><img className="img-fluid d-block mx-auto image" src={item.item.picture} alt={item.item.name} /></div>
+                                                        </div>
+
+                                                        <div className="col-md-5 product-info">
+                                                            <a className="product-name" href={`/item-info?id=${item.item._id}`} style={{fontSize: '18px', color: '#007bff', fontWeight: 'bold'}} >{item.item.name}</a>
+                                                            <div className="product-specs">
+                                                                <p style={{fontSize: '14px', color: 'grey'}}> {item.item.short_desc} </p>
+                                                                <h6>{`Rs: ${item.item.price}`}</h6>
+                                                                {this.state.value===0?
+                                                                   null
+                                                                :(this.state.ready_items[index] === 1) || (this.state.max === this.state.value) ?
+                                                                    <Button disabled size='sm' color='warning' style={{width: '100px'}} onClick={()=>this.deleteItem('product.item._id')} >Completed</Button>
+                                                                :
+                                                                    <Button size='sm' color='success' style={{width: '100px'}} onClick={()=>this.updateOrderByItem(item._id)} >Ready</Button>
+                                                                }
+
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="col-6 col-md-2 quantity"><label className="d-none d-md-block" htmlFor="quantity">Quantity</label> {item.quantity} </div>
+                                                        <div className="col-6 col-md-2 price"><h4>{item.item.price * item.quantity } </h4></div>
+                                                    </div>
+                                                </div>
+
+                                            ))
+                                    
+                                        :null}
+
+                                    </div>
+
+                                </section>
+                            
+                            }
+                            
+                        </div>
+                        
+                        <div className="col-md-12 col-lg-4" style={{padding:'30px', background:'#dceaf8'}} >
+                            {this.state.loading?
+                                <section style={{display: 'flex', justifyContent: 'center'}} ><Spinner/></section>
+                            :
+                                <section>
+                                    <h3 style={{textAlign: 'center', fontSize: '1.5em', fontWeight: 'bold', padding: '16px 0 28px 0', color: '#1d4f88' }} >User Information</h3>
+
+                                    <Card>
+                                        <CardBody style={{borderTop: '2px solid #298dff'}} >
+                                            <CardText><strong>Name:</strong> {order.user.name} </CardText>
+                                            <CardText><strong>Address:</strong> {order.user.address} </CardText>
+                                            <CardText><strong>Tp:</strong> {order.user.tp} </CardText>
+                                            <CardText><strong>Email:</strong> {order.user.email} </CardText>
+                                        </CardBody>
+                                    </Card>
+
+                                    <hr/>
+
+                                    {this.state.value===0?
+                                        <Button style={{background: '#007bff'}} size="lg" block onClick={this.acceptOrder} >Accept</Button>
+                                    :this.state.value===this.state.max-1?
+                                        <Button color='warning' size="lg" block onClick={this.sendOrder} >Send Order</Button>
+                                    :(this.state.max - this.state.value - 1) === 1?
+                                        <h5>Only 1 item is waiting</h5> 
+                                    :this.state.max - this.state.value === 0?
+                                        <h5>Order has sent!</h5>
+                                    :
+                                        <h5> {`${this.state.max - this.state.value - 1} items are waiting`} </h5>
+                                    }
+                                    
+                                </section>
+                            
+                            }
+
+                           
+                        </div>
+
+                    </div>
+                </div>
+
+                
+                <Footer/>
+            </main>
+        )
+    }
+}
+
+const mapStateToProps = state => ({
+    user: state.auth.user,
+  });
+
+
+export default withRouter(connect(mapStateToProps, {getOrderInfo, updateOrder, updateOrderByItem})(OrderInfo));
+
+
+import React, { Component } from 'react';
+import Navbar from '../Components/HomeNavbar';
+import {connect} from 'react-redux';
+import { Link, withRouter } from 'react-router-dom';
+import { Container, Row, Col, Label, Card, CardTitle, CardText, CardBody, Spinner } from 'reactstrap';
+import Footer from '../Components/Footer';
+
+class Orders extends Component {
+
+    _isMounted = false;
+
+    state={
+        loading: true,
+        pending: [],
+        processing: [],
+        delivered: []
+    }
+
+    componentDidMount=()=>{
+        this._isMounted = true;
+
+        let pending = [];
+        let processing = [];
+        let delivered = [];
+
+        for(let i=0; i<this.props.user.bills.length; i++){
+            if(this.props.user.bills[i].accepted === false){
+                pending.push(this.props.user.bills[i]);
+            }else if( this.props.user.bills[i].accepted === true && this.props.user.bills[i].delivered === false){
+                processing.push(this.props.user.bills[i]);
+            }else if(this.props.user.bills[i].delivered === true){
+                delivered.push(this.props.user.bills[i])
+            }
+
+        }
+
+        if(this._isMounted){
+            this.setState({pending, processing, delivered, loading: false});
+        }
+
+    }
+
+    componentWillUnmount() {this._isMounted = false}
+
+    render() {
+        return (
+            <div>
+                <Navbar/>
+                <Container style={{marginTop: '50px'}} >
+                    <div style={{display: 'flex', flexDirection:'column', justifyContent:'center', alignItems:'center', marginBottom: '0px' }}>
+                        <h2 style={{marginBottom: '50px'}}>Current Orders {this.state.loading?<Spinner size="lg" style={{marginBottom: '10px'}} /> : null } </h2>
+                    </div>
+
+                    
+                        <Row>
+                            <Col lg={4} >
+                                <Label>Pending List</Label>
+                                <div style={{marginTop: '20px'}}>
+                                    {this.state.pending.length>0?
+                                        this.state.pending.map((bill, index)=>(
+                                            <Card style={{background: '#ffbebe', marginBottom: '10px'}} key={index} >
+                                                <Link to={`/order-info?id=${bill._id}`} style={{color: 'black', textDecoration: 'none'}} >
+                                                    <CardBody  >
+                                                        <CardTitle style={{marginBottom: '0px'}}> <strong>{bill._id}</strong></CardTitle>
+                                                        <CardText style={{marginBottom: '0', fontSize: '13px'}}>Amount: Rs. {bill.total} </CardText>
+                                                        <CardText style={{marginBottom: '2px', fontSize: '12px'}}>Date: {bill.date} </CardText>
+                                                        <CardText style={{marginBottom: '2px', fontSize: '12px'}}>No of Items: {bill.items.length} </CardText>
+                                                    </CardBody>
+                                                </Link>
+                                            </Card>
+
+                                        ))
+                                    :
+                                        <Card style={{background: '#ffef00'}}>
+                                            <CardBody  >
+                                                <CardText>No any orders found !</CardText>
+                                            </CardBody>
+                                        </Card>}
+                                </div>
+                            </Col>
+
+                            <Col lg={4}>
+                                <Label>Processing List</Label>
+                                <div style={{marginTop: '20px'}}>
+                                    {this.state.processing.length>0?
+                                        this.state.processing.map((bill, index)=>(
+                                            <Card style={{background: '#ffe396', marginBottom: '10px'}} key={index} >
+                                               <Link to={`/order-info?id=${bill._id}`} style={{color: 'black', textDecoration: 'none'}} >
+                                                    <CardBody  >
+                                                        <CardTitle style={{marginBottom: '0px'}}> <strong>{bill._id}</strong></CardTitle>
+                                                        <CardText style={{marginBottom: '0', fontSize: '13px'}}>Amount: Rs. {bill.total} </CardText>
+                                                        <CardText style={{marginBottom: '2px', fontSize: '12px'}}>Date: {bill.date} </CardText>
+                                                        <CardText style={{marginBottom: '2px', fontSize: '12px'}}>No of Items: {bill.items.length} </CardText>
+                                                    </CardBody>
+                                                </Link>
+                                            </Card>
+
+                                        ))
+                                    :
+                                        <Card style={{background: '#ffe396'}}>
+                                            <CardBody  >
+                                                <CardText>All the orders are deliverd !</CardText>
+                                            </CardBody>
+                                        </Card>}
+                                </div>
+                            </Col>
+
+                            <Col lg={4} >
+                                <Label>Delivered List</Label>
+                                <div style={{marginTop: '20px', marginBottom: '50px'}}>
+                                    {this.state.delivered.length>0?
+                                        this.state.delivered.map((bill, index)=>(
+                                            <Card style={{background: '#20c997'}} key={index} >
+                                               <Link to={`/order-info?id=${bill._id}`} style={{color: 'black', textDecoration: 'none'}} >
+                                                    <CardBody  >
+                                                        <CardTitle style={{marginBottom: '0px'}}> <strong>{bill._id}</strong></CardTitle>
+                                                        <CardText style={{marginBottom: '0', fontSize: '13px'}}>Amount: Rs. {bill.total} </CardText>
+                                                        <CardText style={{marginBottom: '2px', fontSize: '12px'}}>Date: {bill.date} </CardText>
+                                                        <CardText style={{marginBottom: '2px', fontSize: '12px'}}>No of Items: {bill.items.length} </CardText>
+                                                    </CardBody>
+                                                </Link>
+                                            </Card>
+
+                                        ))
+                                    :
+                                        <Card style={{background: '#20c997'}}>
+                                            <CardBody  >
+                                                <CardText>Delivered orders list have been deleted !</CardText>
+                                            </CardBody>
+                                        </Card>}
+                                </div>
+                            
+                            </Col>
+                        </Row>
+
+                </Container>
+                <Footer/>
+            </div>
+        )
+    }
+}
+
+const mapStateToProps = state => ({
+    user: state.auth.user
+  });
+  
+
+
+export default withRouter(connect(mapStateToProps, {})(Orders));
+
+
+import React, { Component } from 'react';
+import {connect} from 'react-redux';
+import { withRouter } from 'react-router-dom';
+import { updateProfile, deleteProfile } from '../actions/userActions';
+import { logout } from '../actions/authActions';
+
+import Navbar from '../Components/HomeNavbar';
+import Footer from '../Components/Footer';
+import { Card, CardBody, Form, Container, Button, CardText, FormGroup, Label, Input, Alert } from 'reactstrap';
+
+
+
+class Profile extends Component {
+
+    state={
+        name: this.props.user !== null? this.props.user.name :'',
+        email: this.props.user !== null? this.props.user.email :'',
+        tp: this.props.user !== null? this.props.user.tp :'',
+        address: this.props.user !== null? this.props.user.address :'',
+        update_active:false,
+        valid: null
+    }
+
+    onChange=(e)=>{this.setState({[e.target.name]: e.target.value})}
+    toggleUpdate=()=>{this.setState({update_active: !this.state.update_active})}
+    updateProfile=()=>{
+        this.props.updateProfile({update: this.state}).then(res=>{
+            window.location.reload();
+        })
+    }
+
+    deleteProfile=()=>{
+        this.setState({valid: null});
+        if(this.props.user !== null){
+            if(this.props.user.cart.length === 0){
+                this.props.deleteProfile().then(res=>{
+                    this.props.logout();
+                })
+
+            }else{
+                this.setState({valid: 'Your cart is not empty! Try again after clear it out.'})
+            }
+        }
+    }
+
+    render() {
+        return (
+            <div>
+                <Navbar/>
+
+                <Container style={{ marginTop: '80px'}} >
+
+                    <h4 style={{textAlign: 'center', marginBottom: '30px'}} >Profile</h4>
+
+                    {this.props.user!==null?
+
+                        !this.state.update_active? 
+                            <section style={{maxWidth:'500px', margin:'auto'}} >
+                                <Card style={{marginBottom: '20px'}} >
+                                    <CardBody>
+                                        <CardText style={{marginBottom: '2px'}}><strong>Name: </strong>{this.props.user.name} </CardText>
+                                        <CardText style={{marginBottom: '2px'}}><strong>Address: </strong>{this.props.user.address} </CardText>
+                                        <CardText style={{marginBottom: '2px'}}><strong>Tp: </strong>{this.props.user.tp} </CardText>
+                                        <CardText style={{marginBottom: '20px'}}><strong>Email: </strong>{this.props.user.email} </CardText>
+                                        <div className="clearfix" >
+                                            <Button className="float-left" style={{marginLeft: '5px'}} color='warning' onClick={this.toggleUpdate} >Update Profile</Button>
+                                            <Button className="float-right" style={{marginLeft: '5px'}} color='danger' onClick={this.deleteProfile} >Delete Profile</Button>
+                                        </div>
+                                        
+                                    </CardBody>
+                                </Card>
+
+                                {this.state.valid!==null? <Alert color='danger' >{this.state.valid}</Alert>  :null}
+                            </section>
+                        :
+                            <section style={{maxWidth:'500px', margin:'auto'}} >
+                                <Form style={{marginBottom: '20px'}} >
+                                    <FormGroup>
+                                        <Label>Name</Label>
+                                        <Input name='name' type='text' placeholder={this.props.user.name} onChange={this.onChange} />
+                                    </FormGroup>
+                                    <FormGroup>
+                                        <Label>Address</Label>
+                                        <Input name='address' type='text' placeholder={this.props.user.address} onChange={this.onChange}/>
+                                    </FormGroup>
+                                    <FormGroup>
+                                        <Label>Tp</Label>
+                                        <Input name='tp' type='text' placeholder={this.props.user.tp} onChange={this.onChange} />
+                                    </FormGroup>
+                                    <FormGroup>
+                                        <Label>Email</Label>
+                                        <Input name='email' type='email' placeholder={this.props.user.email} onChange={this.onChange} />
+                                    </FormGroup>
+                                    <div className="clearfix" >
+                                        <Button className="float-left" style={{marginLeft: '5px'}} color='warning' onClick={this.updateProfile} >Save Changes</Button>
+                                        <Button className="float-right" style={{marginLeft: '5px'}} color='danger' onClick={this.toggleUpdate} >Cancel</Button>
+                                    </div>
+                                </Form>
+                            </section>
+
+                    :null}
+
+                </Container>
+                
+                <Footer/>
+            </div>
+        )
+    }
+}
+
+const mapStateToProps = state => ({
+    user: state.auth.user
+  });
+
+export default withRouter(connect(mapStateToProps, {updateProfile, deleteProfile, logout})(Profile));
+
+
+import React, { Component } from 'react';
+import Navbar from '../Components/HomeNavbar'
+import { Container, Col, Row, Spinner, Button, InputGroup, Input, ListGroup, ListGroupItem, ListGroupItemHeading, ListGroupItemText } from 'reactstrap';
+import {connect} from 'react-redux';
+import { Link, withRouter } from 'react-router-dom';
+import { getSellers, getSellerItems, deleteSeller } from '../actions/authActions';
+import UpdateSeller from '../Components/UpdateSeller';
+import AddSeller from '../Components/AddSeller';
+import Footer from '../Components/Footer';
+
+
+
+class SellersInfo extends Component {
+    _isMounted = false;
+    state ={
+        sellers: [],
+        search:[],
+        seller: null,
+        deleting: false,
+        seller_items: null,
+        update_show: false,
+        add_show: false,
+        loading: true
+    }
+
+    componentDidMount=()=>{
+        this._isMounted = true;
+        this.props.getSellers().then(res=>{
+            if(this._isMounted){
+                if(res.length>0){
+                    this.setState({sellers:res, seller : res[0], loading: false});
+                    this.getSellerItems(res[0]._id);
+                }
+            }
+        })
+    }
+    componentWillUnmount() {this._isMounted = false}
+
+    deleteSeller =()=>{
+        this.setState({deleting: true})
+        this.props.deleteSeller(this.state.seller._id).then(res=>{
+            if(res.success){
+                this.setState({deleting: false});
+                window.location.reload();
+            }
+        })
+    }
+
+    selectSeller=(id)=>{
+        let seller = this.state.sellers.filter((seller)=> seller._id === id );
+        this.setState({seller: seller[0]}) ;
+        this.getSellerItems(id);       
+    }
+
+    getSellerItems=(id)=>{
+        this.setState({seller_items: null})
+        this.props.getSellerItems(id).then(res=>{
+            this.setState({seller_items: res})
+        })
+    }
+
+    searchSeller=(e)=>{
+        let results = [];
+        if(e.target.value.length>0){
+            results = this.state.sellers.filter((seller)=> seller.name.toLowerCase().indexOf(e.target.value.toLowerCase()) === 0)
+        }
+        
+        if(results.length>0){
+            this.setState({search: results, seller: results[0]});
+            this.getSellerItems(results[0]._id);
+        }else{
+            this.setState({search: [], seller: this.state.sellers[0]});
+            this.getSellerItems(this.state.sellers[0]._id);
+        }
+        
+    }
+
+    update_toggle=()=>{this.setState({update_show: !this.state.update_show})}
+    add_toggle=()=>{this.setState({add_show: !this.state.add_show})}
+
+
+    render() {
+        return (
+            <div>
+                <Navbar/>
+                <Container style={{marginTop: '50px', marginBottom: '100px'}} >
+                    <h2 style={{marginBottom: '50px', textAlign: 'center'}}>Sellers</h2>
+
+                    <div style={{display: 'flex', justifyContent:'center', alignItems:'center', marginBottom: '40px', flexWrap:"wrap" }}>
+                        <Button color='warning' block style={{width: '300px', marginBottom: '10px'}} onClick={this.add_toggle} >Add New Seller</Button>
+                        <InputGroup style={{width: '400px', marginLeft: '20px', marginBottom: '10px'}} >
+                            <Input placeholder='search seller' onChange={this.searchSeller} />
+                        </InputGroup>
+                    </div>
+
+                    {this.state.sellers.length>0 && this.state.search.length === 0 ? 
+
+                        <Row style={{boxShadow: '0 0 15px rgba(0,0,0,.1)'}}>
+                            <Col lg={8} style={{padding: '30px', background: 'white'}}>
+                                <ListGroup>
+                                    {this.state.sellers.map((seller, index)=>(
+                                        <ListGroupItem key={index} >
+                                            <ListGroupItemHeading style={{cursor: 'pointer', marginBottom: '0'}} onClick={()=>this.selectSeller(seller._id)} >{seller.name}</ListGroupItemHeading>
+                                        </ListGroupItem>
+                                    ))}
+                                    
+                                </ListGroup>
+
+                                
+                            </Col>
+                            <Col lg={4} style={{padding: '30px', background: '#dceaf8'}} >
+
+                                <h4>Seller</h4>
+
+                                <p style={{marginBottom: '0'}}><strong>Name : </strong>{this.state.seller.name}</p>
+                                <p style={{marginBottom: '0'}}><strong>Tp : </strong>{this.state.seller.tp}</p>
+                                <p style={{marginBottom: '0'}}><strong>Address : </strong>{this.state.seller.address}</p>
+                                <p style={{marginBottom: '0'}}><strong>Account no : </strong>{this.state.seller.account_no}</p>
+                                <p style={{marginBottom: '0'}}><strong>Account details : </strong>{this.state.seller.account_details}</p>
+                                <Button color="danger" block style={{marginTop: '30px'}} onClick={this.deleteSeller} > {this.state.deleting? <Spinner size='sm' /> : 'Delete Seller' }</Button>
+                                <Button color="warning" block onClick={this.update_toggle} > Update Seller</Button>
+                                {this.state.seller_items!==null?  <p style={{marginBottom: '0px', marginTop: '16px', fontSize: '12px'}} ><strong>Note :</strong>{` If you delete this seller,the following ${this.state.seller_items.length} items will be deleted as well.`}</p>:null}
+                               
+
+                                <hr/>
+                                <h4>Items</h4>
+                                {this.state.seller_items!==null?
+                                    this.state.seller_items.map((item, index)=>(
+                                        <ListGroup key={index} >
+                                            <ListGroupItem style={{padding: '6px 20px'}} >
+                                                <Link to={`/item-info?id=${item._id}`} ><ListGroupItemText style={{marginBottom: '0', color: 'black'}} >{item.name}</ListGroupItemText></Link> 
+                                            </ListGroupItem>
+                                        </ListGroup>
+                                    ))
+
+                                :<Spinner size='lg'/>}
+                            </Col>
+                            <UpdateSeller show={this.state.update_show} toggle={this.update_toggle} seller={this.state.seller} />
+                        </Row>
+                        
+                    :this.state.search.length>0?
+                        <Row style={{boxShadow: '0 0 15px rgba(0,0,0,.1)'}}>
+                        <Col lg={8} style={{padding: '30px', background: 'white'}}>
+                            <ListGroup>
+                                {this.state.search.map((seller, index)=>(
+                                    <ListGroupItem key={index} >
+                                        <ListGroupItemHeading style={{cursor: 'pointer', marginBottom: '0'}} onClick={()=>this.selectSeller(seller._id)} >{seller.name}</ListGroupItemHeading>
+                                    </ListGroupItem>
+                                ))}
+                                
+                            </ListGroup>
+
+                            
+                        </Col>
+                        <Col lg={4} style={{padding: '30px', background: '#dceaf8'}} >
+
+                            <h4>Seller</h4>
+
+                            <p style={{marginBottom: '0'}}><strong>Name : </strong>{this.state.seller.name}</p>
+                            <p style={{marginBottom: '0'}}><strong>Tp : </strong>{this.state.seller.tp}</p>
+                            <p style={{marginBottom: '0'}}><strong>Address : </strong>{this.state.seller.address}</p>
+                            <p style={{marginBottom: '0'}}><strong>Account no : </strong>{this.state.seller.account_no}</p>
+                            <p style={{marginBottom: '0'}}><strong>Account details : </strong>{this.state.seller.account_details}</p>
+                            <Button color="danger" block style={{marginTop: '30px'}} onClick={this.deleteSeller} > {this.state.deleting? <Spinner size='sm' /> : 'Delete Seller' }</Button>
+                            <Button color="warning" block onClick={this.toggle} > Update Seller</Button>
+                            {this.state.seller_items!==null?  <p style={{marginBottom: '0px', marginTop: '16px', fontSize: '12px'}} ><strong>Note :</strong>{` If you delete this seller,the following ${this.state.seller_items.length} items will be deleted as well.`}</p>:null}
+                        
+
+                            <hr/>
+                            <h4>Items</h4>
+                            {this.state.seller_items!==null?
+                                this.state.seller_items.map((item, index)=>(
+                                    <ListGroup key={index} >
+                                        <ListGroupItem style={{padding: '6px 20px'}} >
+                                            <Link to={`/item-info?id=${item._id}`} ><ListGroupItemText style={{marginBottom: '0', color: 'black'}} >{item.name}</ListGroupItemText></Link> 
+                                        </ListGroupItem>
+                                    </ListGroup>
+                                ))
+
+                            :<Spinner size='lg'/>}
+                        </Col>
+                        <UpdateSeller show={this.state.update_show} toggle={this.update_toggle} seller={this.state.seller} />
+                    </Row>
+                
+                    
+                    
+                    
+                    :<div style={{left: '50%', position: 'absolute'}} ><Spinner size="lg" /></div> }
+                </Container>
+
+                <AddSeller show={this.state.add_show} toggle={this.add_toggle} seller={this.state.seller} />
+               
+                
+                <Footer/>
+            </div>
+        )
+    }
+}
+
+export default withRouter(connect(null, {getSellers, getSellerItems, deleteSeller})(SellersInfo));
+
+
+
+import React, { Component } from 'react';
+import { Alert, Button, Col, FormGroup, Input, Label, Spinner } from 'reactstrap';
+import {connect} from 'react-redux';
+import { withRouter } from 'react-router-dom';
+import { showRoom, addToCart } from '../actions/userActions';
+
+import BuyNow from '../Components/BuyNow';
+import HomeNavBar from '../Components/HomeNavbar';
+import Footer from '../Components/Footer';
+
+const qs = require('query-string');
+
+
+
+class Showroom extends Component {
+
+    _isMounted = false;
+
+    state = {
+        item: null,
+        qty: 1,
+        valid:null,
+        isAdded:false,
+        isOpen:false,
+        payment: null,
+        total: 0,
+        related: [1,2,3]
+    }
+
+    componentDidMount=()=>{
+        this._isMounted = true;
+        const parsed = qs.parse(window.location.search);
+        if(parsed.item){
+            this.props.showRoom(parsed.item).then(res=>{
+                if(this._isMounted){
+                    this.setState({item: res})
+                }
+            })
+        }
+        
+    }
+
+    componentWillUnmount() {this._isMounted = false}
+
+    onChangeQty=(e)=>{
+        if(parseInt(e.target.value)>0){
+            this.setState({qty: parseInt(e.target.value)})
+        }else{
+            this.setState({qty: 1})
+        }
+    }
+
+    addToCart=()=>{
+        this.setState({valid:null});
+        if(this.state.item.qty >= this.state.qty){
+            if(this.props.isAuthenticated){
+                const parsed = qs.parse(window.location.search);
+                this.props.addToCart({item: {item: parsed.item, quantity: this.state.qty}}).then(res=>{
+                    if(res.success){
+                        this.setState({isAdded: true})
+                    }
+                })
+            }else{
+                this.setState({valid: 'Login to your user account first!'})
+            }
+        }else{
+            this.setState({valid: `Only ${this.state.item.qty} items are available!` })
+        }
+    }
+
+    buyNow=()=>{
+        this.setState({valid:null});
+        if(this.state.item.qty >= this.state.qty){
+            if(this.props.isAuthenticated){
+                this.setState({total: (this.state.item.price*this.state.qty) , payment : {item_id: this.state.item._id, quantity: this.state.qty} });
+                this.toggle();
+            }else{
+                this.setState({valid: 'Login to your user account first!'})
+            }
+        }else{
+            this.setState({valid: `Only ${this.state.item.qty} items are available!` })
+        }
+        
+    }
+
+    goToCart=()=>{
+        this.props.history.push('/cart');
+        window.location.reload();
+    }
+
+    toggle=()=>{this.setState({isOpen: !this.state.isOpen})}
+   
+
+    render() {
+        return (
+            <div>
+                <HomeNavBar/>
+
+                <main className="page product-page">
+                    <div className="container" style={{background: 'white',  padding: '40px', boxShadow: '0 0 15px rgba(0,0,0,.1)', marginTop: '80px'}} >
+                        
+                        <div className="block-content">
+
+                            <div className="product-info" style={{marginBottom: '40px'}} >
+
+                                <div className="row">
+
+                                    <div className="col-md-6" >
+                                        <div className="gallery" style={{background: '#f6f6f6', padding: '20px'}}>
+                                            <div className="sp-wrap">
+                                                {this.state.item!==null?
+                                                    <img className="img-fluid d-block mx-auto" src={this.state.item.picture} alt={this.state.item.picture}  />
+                                                :<Spinner size='lg' />}
+                                                
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="col-md-6">
+                                        {this.state.item !== null?
+                                            <div className="info">
+                                                <h3>{this.state.item.name}</h3>
+                                                <p style={{color: 'grey'}} >{this.state.item.short_desc}</p>
+                                                <hr/>
+                                                <div className="price">
+                                                    <h3>{`Rs: ${this.state.item.price}`}</h3>
+                                                </div>
+
+                                                <FormGroup row>
+                                                    <Label sm={2}>Quantity: </Label>
+                                                    <Col sm={3} >
+                                                        <Input type="text" name='qty' placeholder='1' onChange={this.onChangeQty} />
+                                                    </Col>
+                                                    <Col sm={5} >
+                                                        {this.state.item.qty>1?
+                                                            <p style={{color: 'red'}} >{`Only ${this.state.item.qty} items are available`}</p>
+                                                        :this.state.item.qty===1?
+                                                            <p style={{color: 'red'}} >Only 1 item is available</p>
+                                                        :<p style={{color: 'red'}} >Out of stock !</p>}
+                                                        
+                                                    </Col>
+                                                </FormGroup>
+
+                                                <FormGroup row>
+                                                    <Label sm={2}>Total</Label>
+                                                    <Col sm={3} >
+                                                        <h4 style={{marginBottom:'0', padding: '7px 0'}} >{`Rs: ${this.state.item.price * this.state.qty}`}</h4>
+                                                    </Col>
+                                                </FormGroup>
+
+                                                {this.state.item.qty >0 ?
+                                                    <div style={{display: 'flex', margin: '30px 0 10px 0', justifyContent: 'space-between'}}>
+                                                        {this.state.isAdded?
+                                                        <Button color="success" style={{width: '50%', marginRight: '10px', height: '50px'}} onClick={this.goToCart} >Item is added! Go to Cart</Button>
+                                                        :<Button color="info" style={{width: '50%', marginRight: '10px', height: '50px'}} onClick={this.addToCart} >Add to Cart</Button>}
+                                                        
+                                                        <Button color="warning" style={{width: '50%', height: '50px'}} onClick={this.buyNow} >Buy Now</Button>
+                                                    </div>
+                                                :
+                                                    <div style={{display: 'flex', margin: '30px 0 10px 0', justifyContent: 'space-between'}}>
+                                                        {this.state.isAdded?
+                                                        <Button disabled color="success" style={{width: '50%', marginRight: '10px', height: '50px'}} onClick={this.goToCart} >Item is added! Go to Cart</Button>
+                                                        :<Button disabled color="info" style={{width: '50%', marginRight: '10px', height: '50px'}} onClick={this.addToCart} >Add to Cart</Button>}
+                                                        
+                                                        <Button disabled color="warning" style={{width: '50%', height: '50px'}} onClick={this.buyNow} >Buy Now</Button>
+                                                    </div>
+                                                }
+
+                                                    {this.state.valid !== null? <Alert color='danger' >{this.state.valid}</Alert> : null}
+                                                
+                                                <hr/>
+                                                    
+                                                <div className="summary">
+                                                    <p>{this.state.item.desc}</p>
+                                                </div>
+
+                                            </div>
+                                            :
+                                            <div className="info">
+                                                <h3>Loading...</h3>
+                                                <p>Loading...</p>
+                                                <hr/>
+                                                <div className="price">
+                                                    <h3>Loading...</h3>
+                                                </div>
+
+                                                <div style={{display: 'flex', margin: '30px 0', justifyContent: 'space-between'}}>
+                                                    <Button color="info" style={{width: '50%', marginRight: '10px', height: '50px'}} ><Spinner size='sm' /></Button>
+                                                    <Button color="warning" style={{width: '50%', height: '50px'}} ><Spinner size='sm' /></Button>
+                                                </div>
+                                                
+                                                <hr/>
+                                                    
+                                                <div className="summary">
+                                                    <p>Loading...</p>
+                                                </div>
+                                            </div>
+                                        }                                        
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                            <div className="product-info" style={{maxWidth:'600px', margin:'auto'}} >
+                                <h5>Reviews</h5>
+
+                                {this.state.item !== null?
+                                    <section>
+                                        {this.state.item.comments.length>0?
+                                            this.state.item.comments.map((comment, index)=>(
+                                                <section key={index} style={{marginTop: '10px', background: '#dceaf8', padding: '20px', borderRadius: '1.2em'}} >
+                                                    <p style={{marginBottom: '0'}}><strong>{comment.user_name}</strong></p>
+                                                    <p style={{textAlign: 'center'}} >{comment.comment}</p>
+                                                </section>
+        
+                                            ))
+                                        :
+                                            <section style={{marginTop: '10px', background: '#dceaf8', padding: '20px', borderRadius: '1.2em'}} >
+                                                <p style={{textAlign: 'center'}} >No reviews found!</p>
+                                            </section>
+                                        }
+                                    </section>
+                                :
+                                    <section style={{marginTop: '10px', background: '#dceaf8', padding: '20px', borderRadius: '1.2em'}} >
+                                        <p style={{marginBottom: '0'}}><strong>Loading...</strong></p>
+                                        <div style={{textAlign: 'center'}} ><Spinner/></div>
+                                    </section>}
+                            </div>
+
+                            {/* <div className="clean-related-items" style={{marginTop: '80px'}}>
+                                <h4>Related Products</h4>
+
+                                <div className="items" style={{marginTop: '50px'}} >
+
+                                    <div className="row justify-content-center">
+
+                                        {this.state.related.map((index)=>(
+                                            <div className="col-sm-6 col-lg-4" key={index} >
+                                                <div className="clean-related-item" style={{border: '1px #eaeaea solid', padding: '20px'}} >
+                                                    <div className="image"><a href="/"><img className="img-fluid d-block mx-auto" src={img2} alt={index} /></a></div>
+                                                    <div className="related-name" style={{marginTop: '20px', textAlign: 'center'}} ><a href="/">Lorem Ipsum dolor</a><br/>
+                                                        ratings
+                                                        <h4>$300</h4>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                    </div>
+
+                                </div>
+                            </div> */}
+
+                        </div>
+
+                    </div>
+                </main>
+                
+                {this.props.user!== null?
+                    <BuyNow name={this.props.user.name} address={this.props.user.address} isOpen={this.state.isOpen} toggle={this.toggle} total={this.state.total} payment={this.state.payment} />
+                :null}
+
+                
+                <Footer/>
+            </div>
+        )
+    }
+}
+
+const mapStateToProps = state => ({
+    isAuthenticated: state.auth.isAuthenticated,
+    user: state.auth.user,
+  });
+
+
+export default withRouter(connect(mapStateToProps, {showRoom, addToCart })(Showroom));
+
+
+
+import React, { Component } from 'react';
+import {connect} from 'react-redux';
+import { withRouter } from 'react-router-dom';
+import { clearCart, payCart } from '../actions/userActions';
+import { Alert, Button, Modal, ModalBody } from 'reactstrap';
+
+class Payment extends Component {
+
+    state={
+        account_no: '',
+        exp_m: '',
+        exp_d:'',
+        account_name:'',
+        cvc:'',
+        valid:null
+    }
+
+    onChange=(e)=>{this.setState({[e.target.name]: e.target.value})};
+
+    payCart=()=>{
+        this.setState({valid: null});
+        if(this.state.account_no.length>0 && this.state.exp_m.length>0 && this.state.exp_d.length>0 && this.state.account_name.length>0 && this.state.cvc.length>0){
+            this.props.payCart(this.state).then(res=>{
+                window.location.reload();
+            })
+        }else{
+            this.setState({valid: 'Invalid Credrentials !'})
+        }
+       
+    }
+
+    render() {
+        return (
+            <Modal className="checkout-payment" isOpen={this.props.isOpen} toggle={this.props.toggle} >
+                <ModalBody className="checkout" style={{borderTop: '4px solid #298dff'}} >
+                    <h5 className="title" style={{fontWeight: 'bold'}} >Checkout</h5>
+                    <hr/>
+
+                    <div className="item" style={{marginBottom: '16px'}}>
+                        <p className="item-name" style={{fontWeight: 'bold', marginBottom: '0'}} >Billing Name</p>
+                        <p className="item-description" style={{fontSize: '14px', color: 'grey', marginBottom: '0'}} >{this.props.user.name}</p>
+                    </div>
+
+                    <div className="item" style={{marginBottom: '16px'}}>
+                        <p className="item-name" style={{fontWeight: 'bold', marginBottom: '0'}} >Billing Address</p>
+                        <p className="item-description" style={{fontSize: '14px', color: 'grey', marginBottom: '0'}} >{this.props.user.address}</p>
+                    </div>
+
+                    <hr/>
+
+                    <div className="item">
+                        <p className="item-name" style={{fontWeight: 'bold', marginBottom: '0'}} >{`Total  ${this.props.total}`}</p>
+                    </div>
+
+                </ModalBody>
+
+                <ModalBody className="payment" >
+                    <h5 className="title" style={{fontWeight: 'bold'}} >Credit Card Details</h5>
+                    <hr/>
+                    <form className="form-row">
+                        <div className="col-sm-7">
+                            <div className="form-group"><label htmlFor="card-holder">Card Holder</label><input required className="form-control" type="text" placeholder={this.props.user.name} name="account_name" onChange={this.onChange} /></div>
+                        </div>
+                        <div className="col-sm-5">
+                            <div className="form-group"><label>Expiration date</label>
+                                <div className="input-group expiration-date"><input required className="form-control" type="text" placeholder="MM" name="exp_m" onChange={this.onChange} /><input required className="form-control" type="text" placeholder="YY" name="exp_d" onChange={this.onChange} /></div>
+                            </div>
+                        </div>
+                        <div className="col-sm-8">
+                            <div className="form-group"><label htmlFor="card-number">Card Number</label><input className="form-control" type="text" id="card-number" placeholder="Card Number" name="account_no" onChange={this.onChange} required /></div>
+                        </div>
+                        <div className="col-sm-4">
+                            <div className="form-group"><label htmlFor="cvc">CVC</label><input required className="form-control" type="text" id="cvc" placeholder="CVC" name="cvc" onChange={this.onChange} /></div>
+                        </div>
+                        
+                        <Button type="submit" onClick={this.payCart} style={{background: '#007bff', marginTop: '20px'}} size="lg" block   >Proceed</Button>
+                    
+                        {this.state.valid !== null?  <Alert style={{marginTop: '10px', width: '100%'}} color='danger' >{this.state.valid}</Alert> :null}
+                    </form>
+                </ModalBody>
+            </Modal>
+        )
+    }
+}
+
+const mapStateToProps = state => ({
+    user: state.auth.user,
+  });
+
+
+export default withRouter(connect(mapStateToProps, {clearCart, payCart})(Payment));
+
+
+import React, { useState } from 'react';
+import { Dropdown, DropdownToggle, DropdownMenu, DropdownItem, Container, InputGroup, InputGroupAddon, Input, Button  } from 'reactstrap';
+
+const Search = (props) => {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const toggle = () => setDropdownOpen(prevState => !prevState);
+
+  return (
+      <div style={{ padding: '30px', marginTop: '40px', marginBottom: '20px'}} >
+        <Container style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between'}} >
+            <Dropdown isOpen={dropdownOpen} toggle={toggle}  style={{marginRight: '50px'}} >
+                <DropdownToggle caret className='drop-categories' >Categories</DropdownToggle>
+                <DropdownMenu>
+                    <DropdownItem>Foo Action</DropdownItem>
+                    <DropdownItem>Bar Action</DropdownItem>
+                    <DropdownItem>Quo Action</DropdownItem>
+                </DropdownMenu>
+            </Dropdown>
+
+            <InputGroup style={{maxWidth: '800px', boxShadow:'0 .125rem .25rem rgba(0,0,0,.075)'}} >
+                <Input placeholder="Search your wish..." />
+                <InputGroupAddon addonType="prepend"><Button className="theme" style={{width: '200px'}} >Search</Button></InputGroupAddon>
+            </InputGroup>
+        </Container>
+    </div>
+    
+  );
+}
+
+export default Search;
